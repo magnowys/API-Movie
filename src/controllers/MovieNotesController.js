@@ -2,43 +2,47 @@ const knex = require('../database/knex');
 
 class MovieNotesController {
     async create(request, response) {
-        const { title, description, rating, movie_tags} = request.body;
+        const { title, description, rating, movie_tags } = request.body;
         const { user_id } = request.params;
 
-        const [movie_notes_id] = await knex("movie_notes")
-        .insert({
-            title,
-            description,
-            rating,
-            user_id
-        });
+        if (Number.isInteger(rating) && rating >= 0 && rating <= 5) {
+            const [movie_notes_id] = await knex("movie_notes")
+                .insert({
+                    title,
+                    description,
+                    rating,
+                    user_id
+                });
 
-        const tagsInsert = movie_tags.map(name => {
-           return {
-                movie_notes_id,
-                name,
-                user_id
-            }
-        });
+            const tagsInsert = movie_tags.map(name => {
+                return {
+                    movie_notes_id,
+                    name,
+                    user_id
+                }
+            });
 
-        await knex("movie_tags").insert(tagsInsert);
+            await knex("movie_tags").insert(tagsInsert);
 
-        response.json()
+            return response.status(200).json()
+        } else {
+            return response.status(400).json({ error: "Rating must be between 0 and 5" });
+        }
     }
 
     async show(request, response) {
         const { id } = request.params;
 
         const movie_notes = await knex("movie_notes").where({ id }).first();
-        const movie_tags = await knex("movie_tags").where({ movie_notes_id: id}).orderBy("name");
+        const movie_tags = await knex("movie_tags").where({ movie_notes_id: id }).orderBy("name");
 
         return response.json({
-        ...movie_notes,
-        movie_tags
-    });
+            ...movie_notes,
+            movie_tags
+        });
     }
 
-    async delete(request,response) {
+    async delete(request, response) {
         const { id } = request.params;
 
         await knex("movie_notes").where({ id }).delete();
@@ -46,7 +50,7 @@ class MovieNotesController {
         return response.json();
     }
 
-    async index(request,response) {
+    async index(request, response) {
         const { title, user_id, movie_tags } = request.query;
 
         let movie_notes;
@@ -56,17 +60,17 @@ class MovieNotesController {
 
             movie_notes = await knex("movie_tags")
                 .select([
-                   "movie_notes.id",
-                   "movie_notes.title",
-                   "movie_notes.user_id", 
+                    "movie_notes.id",
+                    "movie_notes.title",
+                    "movie_notes.user_id",
                 ])
                 .where("movie_notes.user_id", user_id)
-                .whereLike("movie_notes.title",  `%${title}%`)
+                .whereLike("movie_notes.title", `%${title}%`)
                 .whereIn("name", filterTags)
                 .innerJoin("movie_notes", "movie_notes.id", "movie_tags.note_id")
                 .orderBy("notes.title")
 
-        } else { 
+        } else {
             movie_notes = await knex("movie_notes")
                 .where({ user_id })
                 .whereLike("title", `%${title}%`)
@@ -75,7 +79,7 @@ class MovieNotesController {
 
         const userTags = await knex("movie_tags").where({ user_id });
         const notesWithTags = movie_notes.map(note => {
-        const noteTags = userTags.filter(tag => tag.movie_note_id === note.id);
+            const noteTags = userTags.filter(tag => tag.movie_note_id === note.id);
 
             return {
                 ...note,
