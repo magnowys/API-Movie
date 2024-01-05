@@ -4,30 +4,26 @@ class MovieController {
     async create(request, response) {
         const { title, description, rating, tags } = request.body;
         const user_id = request.user.id;
-
-        if (Number.isInteger(rating) && rating >= 0 && rating <= 5) {
-            const [movie_id] = await knex("movie")
-                .insert({
-                    title,
-                    description,
-                    rating,
-                    user_id
-                });
-
-            const tagsInsert = tags.map(name => {
-                return {
-                    movie_id,
-                    name,
-                    user_id
-                }
+        
+        const [movie_id] = await knex("movie")
+            .insert({
+                title,
+                description,
+                rating,
+                user_id
             });
 
-            await knex("tags").insert(tagsInsert);
+        const tagsInsert = tags.map(name => {
+            return {
+                movie_id,
+                name,
+                user_id
+            }
+        });
 
-            return response.status(200).json()
-        } else {
-            return response.status(400).json({ error: "Rating must be between 0 and 5" });
-        }
+        await knex("tags").insert(tagsInsert);
+
+        return response.status(200).json();
     }
 
     async show(request, response) {
@@ -91,6 +87,7 @@ class MovieController {
 
         return response.json(notesWithTags);
     }
+    
 }
 
 module.exports = MovieController
